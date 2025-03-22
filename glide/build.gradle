@@ -1,0 +1,157 @@
+import com.android.build.gradle.api.LibraryVariant
+
+/**
+ * This module is used for two things:
+ *     <ul>
+ *         <li>Compiling a single unified set of javadocs for Glide
+ *         <li>Providing a jar version of Glide for internal libraries, like
+ *         Glide's annotation processor.
+ *     </ul>
+ *
+ * <p>Previously this module was used to produce a release jar for Glide, but
+ * we've long since stopped releasing the jar. Now all release artifacts come
+ * from the upload script, which uploads aars for each production submodule
+ */
+
+apply plugin: 'java'
+
+// The paths of Android projects that should be included only in Javadoc, not in the jar.
+static def getAndroidPathsForJavadoc() {
+    [
+            ':integration:concurrent',
+            ':integration:gifencoder',
+            ':integration:okhttp',
+            ':integration:okhttp3',
+            ':integration:recyclerview',
+            ':integration:volley',
+            ':library',
+            ':mocks',
+            ':third_party:disklrucache',
+            ':third_party:gif_decoder',
+    ]
+}
+
+static def getAndroidPathsForJar() {
+    [':library', ':third_party:disklrucache', ':third_party:gif_decoder']
+}
+
+// The paths of Java projects that should be included only in Javadoc, not in the jar.
+static def getJavaPathsForJavadoc() {
+    [':annotation']
+}
+
+(getAndroidPathsForJavadoc() + getJavaPathsForJavadoc()).each {
+    evaluationDependsOn(it)
+}
+
+def asProjects(paths) {
+    paths.collect { String path -> project(path) }
+}
+
+def getAndroidSdkDirectory() {
+    project(':library').android.sdkDirectory
+}
+
+def getAndroidCompileSdkVersion() {
+    project(':library').android.compileSdkVersion
+}
+
+def getAndroidProjectsForJavadoc() {
+    asProjects(getAndroidPathsForJavadoc())
+}
+
+def getAndroidLibraryVariantsForJar() {
+    getAndroidLibraryVariantsForProjects(asProjects(getAndroidPathsForJar()))
+}
+
+def getAndroidLibraryVariantsForJavadoc() {
+    getAndroidLibraryVariantsForProjects(getAndroidProjectsForJavadoc())
+}
+
+def getAndroidLibraryVariantsForProjects(projects) {
+    projects.collect { project ->
+        project.android.libraryVariants.findAll { type ->
+            type.buildType.name.equalsIgnoreCase("release")
+        }
+    }.sum()
+}
+
+def getSourceFilesForJavadoc() {
+    getAndroidProjectsForJavadoc().collect { project ->
+      project.android.sourceSets.main.java.srcDirs
+    }
+}
+
+def getAndroidJar() {
+    "${getAndroidSdkDirectory()}/platforms/${getAndroidCompileSdkVersion()}/android.jar"
+}
+
+project.archivesBaseName = "${POM_ARTIFACT_ID}-${VERSION_NAME}"
+
+// Generate javadocs and sources containing batched documentation and sources for all internal
+// projects.
+def javadocTask = tasks.create("releaseJavadoc", Javadoc) {
+    source = getSourceFilesForJavadoc()
+
+    doFirst {
+        it.classpath =
+                project.files(
+                        getAndroidJar(),
+                        getAndroidLibraryVariantsForJavadoc().collect {
+                            LibraryVariant lib ->
+                                lib.getJavaCompileProvider().get().classpath.files
+                        },
+                        // Finds dependencies of Android packages that would otherwise be
+                        // ignored (Volley in particular)
+                        getAndroidProjectsForJavadoc().collect { Project project ->
+                            project.file('build/intermediates/javac/release/classes')
+                        }
+        )
+    }
+
+    options {
+        links("http://docs.oracle.com/javase/7/docs/api/")
+        links("https://square.github.io/okhttp/3.x/okhttp/")
+        links("https://square.github.io/okhttp/2.x/okhttp/")
+        links("http://d.android.com/reference")
+    }
+
+    exclude '**/R.java'
+}
+
+def cleanJavadocTask = task("cleanReleaseJavadoc", type: Delete) {
+    delete javadocTask.destinationDir
+} as Task
+clean.dependsOn(cleanJavadocTask)
+
+def javadocJarTask = task("releaseJavadocJar", type: Jar) {
+    from javadocTask.destinationDir
+} as Task
+
+javadocJarTask.dependsOn(javadocTask)
+
+(getAndroidProjectsForJavadoc()).each {
+    project ->
+        releaseJavadoc.dependsOn(project.tasks.compileReleaseSources)
+        jar.dependsOn(project.tasks.compileReleaseSources)
+}
+
+
+jar {
+    from files(
+            getAndroidLibraryVariantsForJar().collect { LibraryVariant variant ->
+                variant.getJavaCompileProvider().get().destinationDirectory
+            }
+    )
+    exclude "**/R.class"
+    exclude "**/R\$*.class"
+    exclude "android/**"
+    exclude "**/BuildConfig.class"
+}
+ 
+artifacts {
+    archives releaseJavadocJar {
+        archiveClassifier = 'javadoc'
+    }
+}
+
