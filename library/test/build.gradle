@@ -18,6 +18,7 @@ dependencies {
 
 tasks.withType(JavaCompile) {
     options.fork = true
+    options.compilerArgs += ["-Xlint:-this-escape"]
 }
 
 afterEvaluate {
@@ -46,7 +47,6 @@ android {
     defaultConfig {
         minSdk libs.versions.min.sdk.version.get() as int
         targetSdk libs.versions.target.sdk.version.get() as int
-        versionName VERSION_NAME as String
     }
 
     compileOptions {

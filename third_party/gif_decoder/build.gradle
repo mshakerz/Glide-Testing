@@ -22,3 +22,10 @@ android {
 }
 
 apply from: "${rootProject.projectDir}/scripts/upload.gradle"
+
+tasks.withType(JavaCompile).configureEach {
+    // Remove the -Werror flag or disable the specific warning
+    options.compilerArgs.removeAll { it == "-Werror" }
+    // Alternatively, you can specifically disable just the this-escape warning:
+    // options.compilerArgs.add("-Xlint:-this-escape")
+}

@@ -23,7 +23,6 @@ android {
         minSdk 16 as int
         targetSdk libs.versions.target.sdk.version.get() as int
 
-        versionName VERSION_NAME as String
     }
 
     compileOptions {
