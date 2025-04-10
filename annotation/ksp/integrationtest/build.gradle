@@ -21,7 +21,6 @@ android {
     defaultConfig {
         minSdk libs.versions.min.sdk.version.get() as int
         targetSdk libs.versions.target.sdk.version.get() as int
-        versionName VERSION_NAME as String
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11

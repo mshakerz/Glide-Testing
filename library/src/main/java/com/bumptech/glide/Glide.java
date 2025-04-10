@@ -270,7 +270,7 @@ public class Glide implements ComponentCallbacks2 {
 
   @Nullable
   @SuppressWarnings({"unchecked", "TryWithIdenticalCatches", "PMD.UnusedFormalParameter"})
-  private static GeneratedAppGlideModule getAnnotationGeneratedGlideModules(Context context) {
+  static GeneratedAppGlideModule getAnnotationGeneratedGlideModules(Context context) {
     GeneratedAppGlideModule result = null;
     try {
       Class<GeneratedAppGlideModule> clazz =

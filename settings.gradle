@@ -1,3 +1,6 @@
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
+}
 exec {
     commandLine "git", "submodule", "update", "--init", "--recursive"
     ignoreExitValue true
@@ -47,7 +50,7 @@ dependencyResolutionManagement {
         libs {
             // Versions for things other than dependencies
             version('compile-sdk-version', 'android-34')
-            version('min-sdk-version', '14')
+            version('min-sdk-version', '21')
             version('okhttp-min-sdk-version', '21')
             version('target-sdk-version', '32')
             version('pmd', '6.0.0')
